@@ -7,13 +7,28 @@
 #include "CircuitReader.hpp"
 #include <libsnark/gadgetlib2/integration.hpp>
 #include <libsnark/gadgetlib2/adapters.hpp>
+
 #include <libsnark/zk_proof_systems/ppzksnark/r1cs_ppzksnark/examples/run_r1cs_ppzksnark.hpp>
 #include <libsnark/zk_proof_systems/ppzksnark/r1cs_ppzksnark/r1cs_ppzksnark.hpp>
+#include <libsnark/common/default_types/r1cs_ppzksnark_pp.hpp>
+
 #include <libsnark/zk_proof_systems/ppzksnark/r1cs_gg_ppzksnark/examples/run_r1cs_gg_ppzksnark.hpp>
 #include <libsnark/zk_proof_systems/ppzksnark/r1cs_gg_ppzksnark/r1cs_gg_ppzksnark.hpp>
 #include <libsnark/common/default_types/r1cs_gg_ppzksnark_pp.hpp>
 
-int main(int argc, char **argv) {
+#include <libsnark/zk_proof_systems/ppzksnark/r1cs_se_ppzksnark/examples/run_r1cs_se_ppzksnark.hpp>
+#include <libsnark/zk_proof_systems/ppzksnark/r1cs_se_ppzksnark/r1cs_se_ppzksnark.hpp>
+#include <libsnark/common/default_types/r1cs_se_ppzksnark_pp.hpp>
+
+enum PROOF_SYSTEM
+{
+	R1CS_PPZKSNARK = 0,
+	R1CS_GG_PPZKSNARK,
+	R1CS_SE_PPZKSNARK
+};
+
+int main(int argc, char **argv)
+{
 
 	libff::start_profiling();
 	gadgetlib2::initPublicParamsFromDefaultPp();
@@ -21,12 +36,23 @@ int main(int argc, char **argv) {
 	ProtoboardPtr pb = gadgetlib2::Protoboard::create(gadgetlib2::R1P);
 
 	int inputStartIndex = 0;
-	if(argc == 4){
-		if(strcmp(argv[1], "gg") != 0){
+	PROOF_SYSTEM proofSystem = R1CS_PPZKSNARK;
+	if (argc == 4){
+		if (strcmp(argv[1], "R1CS_PPZKSNARK") == 0){
+			proofSystem = R1CS_PPZKSNARK;
+			cout << "Using ppzsknark in " << argv[1] << endl;
+		}
+		else if (strcmp(argv[1], "R1CS_GG_PPZKSNARK") == 0 || strcmp(argv[1], "gg") == 0){
+			proofSystem = R1CS_GG_PPZKSNARK;
+			cout << "Using ppzsknark in " << argv[1] << endl;
+		}
+		else if (strcmp(argv[1], "R1CS_SE_PPZKSNARK") == 0 || strcmp(argv[1], "se") == 0){
+			proofSystem = R1CS_SE_PPZKSNARK;
+			cout << "Using ppzsknark in " << argv[1] << endl;
+		}
+		else{
 			cout << "Invalid Argument - Terminating.." << endl;
 			return -1;
-		} else{
-			cout << "Using ppzsknark in the generic group model [Gro16]." << endl;
 		}
 		inputStartIndex = 1;	
 	} 	
@@ -83,9 +109,22 @@ int main(int argc, char **argv) {
 	} else {
 		// The following code makes use of the observation that 
 		// libsnark::default_r1cs_gg_ppzksnark_pp is the same as libff::default_ec_pp (see r1cs_gg_ppzksnark_pp.hpp)
+		// libsnark::default_r1cs_se_ppzksnark_pp is the same as libff::default_ec_pp
+		// libsnark::default_r1cs_ppzksnark_pp is the same as libff::default_ec_pp
+
 		// otherwise, the following code won't work properly, as GadgetLib2 is hardcoded to use libff::default_ec_pp.
-		successBit = libsnark::run_r1cs_gg_ppzksnark<libsnark::default_r1cs_gg_ppzksnark_pp>(
-			example, test_serialization);
+		switch (proofSystem)
+		{
+		case R1CS_PPZKSNARK:
+			successBit = libsnark::run_r1cs_ppzksnark<libff::default_ec_pp>(example, test_serialization);
+			break;
+		case R1CS_GG_PPZKSNARK:
+			successBit = libsnark::run_r1cs_gg_ppzksnark<libff::default_ec_pp>(example, test_serialization);
+			break;
+		case R1CS_SE_PPZKSNARK:
+			successBit = libsnark::run_r1cs_se_ppzksnark<libff::default_ec_pp>(example, test_serialization);
+			break;
+		}
 	}
 
 	if(!successBit){
